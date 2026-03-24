@@ -21,6 +21,12 @@ echo "==> Setting cap_net_raw on Python binary for unprivileged ICMP ping..."
 PYTHON_REAL=$(readlink -f "${INSTALL_DIR}/venv/bin/python3")
 setcap cap_net_raw+ep "${PYTHON_REAL}"
 
+echo "==> Setting ownership of install directory..."
+chown -R calebp:calebp "${INSTALL_DIR}"
+
+echo "==> Opening port 8080 in UFW firewall..."
+ufw allow 8080/tcp
+
 echo "==> Installing systemd service..."
 cp "${INSTALL_DIR}/monitor.service" /etc/systemd/system/monitor.service
 
