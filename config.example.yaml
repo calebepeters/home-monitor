@@ -1,0 +1,51 @@
+ntfy:
+  url: "https://ntfy.sh"
+  topic: "your-unique-topic"   # set this to something unique — subscribe to it in the ntfy app
+
+polling:
+  interval_seconds: 60
+  alert_after_failures: 2        # alert on 2nd consecutive failure
+  check_timeout_seconds: 10
+
+hosts:
+  # Proxmox web UI — use HTTP not ping (Proxmox blocks ICMP by default)
+  - name: "Proxmox Server"
+    checks:
+      - type: http
+        url: "https://192.168.1.10:8006"
+        expected_status: 200
+
+  - name: "Pi-hole (Proxmox VM)"
+    checks:
+      - type: http
+        url: "http://192.168.1.11/admin"
+        expected_status: 200
+
+  - name: "Pi-hole (Raspberry Pi)"
+    checks:
+      - type: http
+        url: "http://192.168.1.60/admin"
+        expected_status: 200
+
+  - name: "Homebridge"
+    checks:
+      - type: tcp
+        host: "192.168.1.60"
+        port: 8581
+
+  # nginx reverse proxy — check local IP directly, not public domain (Cloudflare masks local issues)
+  - name: "nginx Reverse Proxy"
+    checks:
+      - type: tcp
+        host: "192.168.1.25"
+        port: 80
+      - type: tcp
+        host: "192.168.1.25"
+        port: 443
+
+  # Ubiquiti gateway — use TCP not ping (Ubiquiti blocks ICMP by default)
+  - name: "Ubiquiti Gateway"
+    checks:
+      - type: tcp
+        host: "192.168.1.1"
+        port: 443
