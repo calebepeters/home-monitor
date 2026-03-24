@@ -25,7 +25,8 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Edit config.yaml with your hosts and ntfy topic
+# Copy the example config and fill in your hosts and ntfy topic
+cp config.example.yaml config.yaml
 python main.py
 # Dashboard at http://localhost:8080
 ```
@@ -41,7 +42,7 @@ The setup script installs dependencies, creates a venv, sets the `cap_net_raw` c
 
 ## Configuration
 
-Edit `config.yaml` before starting:
+Copy `config.example.yaml` to `config.yaml` and edit it (`config.yaml` is gitignored so your real IPs and ntfy topic stay local):
 
 ```yaml
 ntfy:
@@ -89,9 +90,9 @@ src/monitor/
 ├── alerting.py    # ntfy.sh integration
 └── api.py         # FastAPI app + routes
 static/
-└── dashboard.html # single-file frontend
-main.py            # entry point
-config.yaml        # host configuration
+└── index.html         # single-file frontend
+main.py                # entry point
+config.example.yaml    # example config — copy to config.yaml and edit
 setup.sh           # Ubuntu 24.04 install script
 monitor.service    # systemd unit file
 ```

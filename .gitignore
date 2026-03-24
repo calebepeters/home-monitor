@@ -12,6 +12,9 @@ build/
 # Environment
 .env
 
+# Local config (contains real IPs and ntfy topic — use config.example.yaml as a template)
+config.yaml
+
 # Database
 *.db
 
