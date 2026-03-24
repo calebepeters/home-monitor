@@ -18,7 +18,8 @@ echo "==> Installing Python dependencies..."
 "${INSTALL_DIR}/venv/bin/pip" install -r "${INSTALL_DIR}/requirements.txt"
 
 echo "==> Setting cap_net_raw on Python binary for unprivileged ICMP ping..."
-setcap cap_net_raw+ep "${INSTALL_DIR}/venv/bin/python3"
+PYTHON_REAL=$(readlink -f "${INSTALL_DIR}/venv/bin/python3")
+setcap cap_net_raw+ep "${PYTHON_REAL}"
 
 echo "==> Installing systemd service..."
 cp "${INSTALL_DIR}/monitor.service" /etc/systemd/system/monitor.service
