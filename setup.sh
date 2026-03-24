@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-INSTALL_DIR="/opt/network-monitor"
+INSTALL_DIR="/opt/network-monitor/home-monitor"
 
 echo "==> Updating packages and installing dependencies..."
 apt-get update && apt-get install -y python3-pip python3-venv git
