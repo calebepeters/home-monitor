@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home Network Monitor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #ffffff;
+    }
+
+    #last-updated {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 0.4rem;
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 10px;
+      padding: 1.2rem 1.4rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      border-color: #4a4a8a;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.8rem;
+    }
+
+    .host-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .status-badge {
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 0.25rem 0.7rem;
+      border-radius: 20px;
+      letter-spacing: 0.05em;
+    }
+
+    .status-up   { background: rgba(0, 200, 83, 0.15); color: #00c853; border: 1px solid #00c853; }
+    .status-down { background: rgba(255, 23, 68, 0.15); color: #ff1744; border: 1px solid #ff1744; }
+
+    .card-meta {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.82rem;
+      color: #aaa;
+      flex-wrap: wrap;
+    }
+
+    .meta-item span {
+      display: block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #666;
+      margin-bottom: 0.15rem;
+    }
+
+    .meta-value-up   { color: #00c853; }
+    .meta-value-down { color: #ff1744; }
+
+    .history-panel {
+      margin-top: 1rem;
+      border-top: 1px solid #0f3460;
+      padding-top: 1rem;
+      display: none;
+    }
+
+    .history-panel.open { display: block; }
+
+    .history-panel table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    .history-panel th {
+      text-align: left;
+      color: #666;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.3rem 0.4rem;
+      border-bottom: 1px solid #0f3460;
+    }
+
+    .history-panel td {
+      padding: 0.3rem 0.4rem;
+      border-bottom: 1px solid #0f3460;
+      color: #ccc;
+    }
+
+    .ok { color: #00c853; }
+    .fail { color: #ff1744; }
+
+    .loading { color: #666; font-size: 0.85rem; padding: 0.5rem 0; }
+    .error-msg { color: #ff1744; font-size: 0.85rem; padding: 0.5rem 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Home Network Monitor</h1>
+    <div id="last-updated">Loading...</div>
+  </header>
+  <div id="grid"></div>
+
+  <script>
+    const grid = document.getElementById('grid');
+    const lastUpdated = document.getElementById('last-updated');
+    const openHistory = {};  // host_name -> bool
+
+    function timeAgo(isoString) {
+      if (!isoString) return '—';
+      const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+      if (diff < 60) return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
+    }
+
+    function formatLatency(ms) {
+      if (ms == null) return '—';
+      return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms/1000).toFixed(2)}s`;
+    }
+
+    function renderHistoryTable(checks) {
+      if (!checks.length) return '<p class="loading">No history yet.</p>';
+      const rows = checks.map(c => `
+        <tr>
+          <td>${c.checked_at ? c.checked_at.replace('T',' ').slice(0,19) + ' UTC' : '—'}</td>
+          <td>${c.check_type}</td>
+          <td class="${c.success ? 'ok' : 'fail'}">${c.success ? 'OK' : 'FAIL'}</td>
+          <td>${formatLatency(c.latency_ms)}</td>
+          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.error||''}">${c.error || '—'}</td>
+        </tr>`).join('');
+      return `<table>
+        <thead><tr><th>Time</th><th>Type</th><th>Status</th><th>Latency</th><th>Error</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    async function loadHistory(hostName, panel) {
+      panel.innerHTML = '<p class="loading">Loading history...</p>';
+      try {
+        const resp = await fetch(`/api/history/${encodeURIComponent(hostName)}`);
+        const data = await resp.json();
+        panel.innerHTML = renderHistoryTable(data);
+      } catch (e) {
+        panel.innerHTML = '<p class="error-msg">Failed to load history.</p>';
+      }
+    }
+
+    function renderCards(hosts) {
+      grid.innerHTML = '';
+      hosts.forEach(host => {
+        const isUp = host.is_up;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.name = host.name;
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="host-name">${host.name}</div>
+            <div class="status-badge ${isUp ? 'status-up' : 'status-down'}">${isUp ? 'UP' : 'DOWN'}</div>
+          </div>
+          <div class="card-meta">
+            <div class="meta-item">
+              <span>24h Uptime</span>
+              <div class="${isUp ? 'meta-value-up' : 'meta-value-down'}">${host.uptime_24h != null ? host.uptime_24h + '%' : '—'}</div>
+            </div>
+            <div class="meta-item">
+              <span>Last Latency</span>
+              <div>${formatLatency(host.last_latency_ms)}</div>
+            </div>
+            <div class="meta-item">
+              <span>Changed</span>
+              <div>${timeAgo(host.last_changed_at)}</div>
+            </div>
+          </div>
+          <div class="history-panel ${openHistory[host.name] ? 'open' : ''}"></div>
+        `;
+
+        const panel = card.querySelector('.history-panel');
+        if (openHistory[host.name]) {
+          loadHistory(host.name, panel);
+        }
+
+        card.addEventListener('click', async () => {
+          const isOpen = panel.classList.toggle('open');
+          openHistory[host.name] = isOpen;
+          if (isOpen) {
+            await loadHistory(host.name, panel);
+          }
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    async function refresh() {
+      try {
+        const resp = await fetch('/api/status');
+        const hosts = await resp.json();
+        renderCards(hosts);
+        lastUpdated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+      } catch (e) {
+        lastUpdated.textContent = 'Error fetching status.';
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 30000);
+  </script>
+</body>
+</html>

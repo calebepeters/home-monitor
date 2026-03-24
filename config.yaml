@@ -1,0 +1,43 @@
+ntfy:
+  url: "https://ntfy.sh"
+  topic: "home-monitor-alerts"   # set this to something unique
+
+polling:
+  interval_seconds: 60
+  alert_after_failures: 2        # alert on 2nd consecutive failure
+  check_timeout_seconds: 10
+
+hosts:
+  - name: "Proxmox Server"
+    checks:
+      - type: ping
+        host: "192.168.1.10"
+
+  - name: "Pi-hole (Proxmox VM)"
+    checks:
+      - type: http
+        url: "http://192.168.1.11/admin"
+        expected_status: 200
+
+  - name: "Pi-hole (Raspberry Pi)"
+    checks:
+      - type: http
+        url: "http://192.168.1.60/admin"
+        expected_status: 200
+
+  - name: "Homebridge"
+    checks:
+      - type: tcp
+        host: "192.168.1.60"
+        port: 8581
+
+  - name: "nginx Reverse Proxy"
+    checks:
+      - type: http
+        url: "https://phantomlander.com"
+        expected_status: 200
+
+  - name: "Ubiquiti Gateway"
+    checks:
+      - type: ping
+        host: "192.168.1.1"
