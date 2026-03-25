@@ -44,16 +44,25 @@
     .card {
       background: #16213e;
       border: 1px solid #0f3460;
+      border-top-width: 3px;
       border-radius: 10px;
       padding: 1.2rem 1.4rem;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       cursor: pointer;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: filter 0.15s, box-shadow 0.15s;
     }
 
     .card:hover {
-      border-color: #4a4a8a;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+      filter: brightness(1.12);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+    }
+
+    .card.card-up   { border-top-color: #00c853; }
+    .card.card-down { border-top-color: #ff1744; }
+
+    /* Expanded card spans full grid width */
+    .card.expanded {
+      grid-column: 1 / -1;
     }
 
     .card-header {
@@ -61,6 +70,12 @@
       align-items: center;
       justify-content: space-between;
       margin-bottom: 0.8rem;
+    }
+
+    .card-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
     }
 
     .host-name {
@@ -79,6 +94,15 @@
 
     .status-up   { background: rgba(0, 200, 83, 0.15); color: #00c853; border: 1px solid #00c853; }
     .status-down { background: rgba(255, 23, 68, 0.15); color: #ff1744; border: 1px solid #ff1744; }
+
+    .collapse-hint {
+      font-size: 0.75rem;
+      color: #555;
+      display: none;
+      user-select: none;
+    }
+
+    .card.expanded .collapse-hint { display: inline; }
 
     .card-meta {
       display: flex;
@@ -113,28 +137,43 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 0.78rem;
+      table-layout: fixed;
     }
+
+    .history-panel col.col-time    { width: 90px; }
+    .history-panel col.col-type    { width: 70px; }
+    .history-panel col.col-status  { width: 65px; }
+    .history-panel col.col-latency { width: 75px; }
+    .history-panel col.col-error   { } /* takes remaining space */
 
     .history-panel th {
       text-align: left;
-      color: #666;
+      color: #888;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      padding: 0.3rem 0.4rem;
-      border-bottom: 1px solid #0f3460;
+      padding: 8px 12px;
+      border-bottom: 2px solid #1e3a6e;
+      background: #0f1e3a;
     }
 
     .history-panel td {
-      padding: 0.3rem 0.4rem;
+      padding: 8px 12px;
       border-bottom: 1px solid #0f3460;
       color: #ccc;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .ok { color: #00c853; }
+    .history-panel tbody tr:nth-child(even) td {
+      background: rgba(255,255,255,0.03);
+    }
+
+    .ok   { color: #00c853; }
     .fail { color: #ff1744; }
 
-    .loading { color: #666; font-size: 0.85rem; padding: 0.5rem 0; }
+    .loading   { color: #666; font-size: 0.85rem; padding: 0.5rem 0; }
     .error-msg { color: #ff1744; font-size: 0.85rem; padding: 0.5rem 0; }
   </style>
 </head>
@@ -164,17 +203,27 @@
       return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms/1000).toFixed(2)}s`;
     }
 
+    function formatTime(isoString) {
+      if (!isoString) return '—';
+      const d = new Date(isoString);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
     function renderHistoryTable(checks) {
       if (!checks.length) return '<p class="loading">No history yet.</p>';
       const rows = checks.map(c => `
         <tr>
-          <td>${c.checked_at ? c.checked_at.replace('T',' ').slice(0,19) + ' UTC' : '—'}</td>
+          <td>${formatTime(c.checked_at)}</td>
           <td>${c.check_type}</td>
           <td class="${c.success ? 'ok' : 'fail'}">${c.success ? 'OK' : 'FAIL'}</td>
           <td>${formatLatency(c.latency_ms)}</td>
-          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.error||''}">${c.error || '—'}</td>
+          <td title="${c.error || ''}">${c.error || '—'}</td>
         </tr>`).join('');
       return `<table>
+        <colgroup>
+          <col class="col-time" /><col class="col-type" /><col class="col-status" />
+          <col class="col-latency" /><col class="col-error" />
+        </colgroup>
         <thead><tr><th>Time</th><th>Type</th><th>Status</th><th>Latency</th><th>Error</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
@@ -196,12 +245,15 @@
       hosts.forEach(host => {
         const isUp = host.is_up;
         const card = document.createElement('div');
-        card.className = 'card';
+        card.className = `card ${isUp ? 'card-up' : 'card-down'}${openHistory[host.name] ? ' expanded' : ''}`;
         card.dataset.name = host.name;
         card.innerHTML = `
           <div class="card-header">
-            <div class="host-name">${host.name}</div>
-            <div class="status-badge ${isUp ? 'status-up' : 'status-down'}">${isUp ? 'UP' : 'DOWN'}</div>
+            <div class="card-header-left">
+              <div class="host-name">${host.name}</div>
+              <div class="status-badge ${isUp ? 'status-up' : 'status-down'}">${isUp ? 'UP' : 'DOWN'}</div>
+            </div>
+            <span class="collapse-hint">▲ collapse</span>
           </div>
           <div class="card-meta">
             <div class="meta-item">
@@ -227,6 +279,7 @@
 
         card.addEventListener('click', async () => {
           const isOpen = panel.classList.toggle('open');
+          card.classList.toggle('expanded', isOpen);
           openHistory[host.name] = isOpen;
           if (isOpen) {
             await loadHistory(host.name, panel);
